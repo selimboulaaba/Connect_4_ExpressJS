@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 mongoose.connect(
-  'mongodb+srv://' + process.env.MONGO_USER + ':' + process.env.MONGO_PASSWORD + '@connect-4.8f3hh.mongodb.net/?retryWrites=true&w=majority&appName=Connect-4'
+  'mongodb+srv://' + process.env.MONGO_USER + ':' + process.env.MONGO_PASSWORD + '@connect-4.8f3hh.mongodb.net/App?retryWrites=true&w=majority&appName=Connect-4'
 );
 
 const db = mongoose.connection;
@@ -16,8 +16,8 @@ db.once('open', () => {
   console.log('Connected to MongoDB');
 });
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+var usersRouter = require('./routes/users.route');
+var gamesRouter = require('./routes/games.route');
 
 var app = express();
 
@@ -31,8 +31,8 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/games', gamesRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
