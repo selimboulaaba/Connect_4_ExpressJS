@@ -10,7 +10,7 @@ const gameSchema = new mongoose.Schema(
         p2: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: false,
+            default: null,
         },
         p1_Moves: {
             type: [String],
@@ -19,7 +19,17 @@ const gameSchema = new mongoose.Schema(
         p2_Moves: {
             type: [String],
             default: [],
-        }
+        },
+        score: {
+            p1: {
+                type: Number,
+                default: 0,
+            },
+            p2: {
+                type: Number,
+                default: 0,
+            },
+        },
     },
     {
         new: true,

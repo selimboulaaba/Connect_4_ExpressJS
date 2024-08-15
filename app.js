@@ -5,6 +5,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const mongoose = require('mongoose');
 require('dotenv').config();
+const cors = require('cors');
 
 mongoose.connect(
   'mongodb+srv://' + process.env.MONGO_USER + ':' + process.env.MONGO_PASSWORD + '@connect-4.8f3hh.mongodb.net/App?retryWrites=true&w=majority&appName=Connect-4'
@@ -20,6 +21,12 @@ var usersRouter = require('./routes/users.route');
 var gamesRouter = require('./routes/games.route');
 
 var app = express();
+
+app.use(cors({
+  origin: 'http://localhost:5173', // Allow requests from this origin
+  methods: 'GET,POST,PUT,DELETE',  // Allow these HTTP methods
+  allowedHeaders: 'Content-Type,Authorization' // Allow these headers
+}));
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));

@@ -1,4 +1,5 @@
 const gameService = require("../services/game.service");
+const jwt = require('jsonwebtoken');
 
 async function createGame(req, res, next) {
     try {
@@ -7,7 +8,7 @@ async function createGame(req, res, next) {
 
         const { game } = result;
         res.status(201).json({
-            data: game
+            game: game
         });
     } catch (error) {
         return res.status(400).json({ message: error.message });
@@ -22,7 +23,40 @@ async function getGame(req, res, next) {
     }
 }
 
+async function joinGame(req, res, next) {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+
+        const result = await gameService.joinGame(req.params.id, decoded.username);
+
+        const { game } = result;
+        res.json({
+            game: game
+        });
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
+async function updateMove(req, res, next) {
+    try {
+        const newMove = req.body;
+        const result = await gameService.updateMove(req.params.id, newMove);
+
+        const { game } = result;
+        res.json({
+            game: game
+        });
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
 module.exports = {
     getGame,
-    createGame
+    createGame,
+    joinGame,
+    updateMove
 }; 
