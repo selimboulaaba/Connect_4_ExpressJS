@@ -20,8 +20,39 @@ app.set('port', port);
  * Create HTTP server.
  */
 
+const users = {};
+
 var server = http.createServer(app);
-var io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
+
+app.set('users', users);
+app.set('io', io); 
+
+io.on('connection', (socket) => {
+  socket.on('register', (username) => {
+    if (typeof username === 'string') {
+      users[username] = socket.id;
+      app.set('users', users);
+    } else {
+    }
+  });
+
+  socket.on('disconnect', () => {
+    for (let username in users) {
+      if (users[username] === socket.id) {
+        delete users[username];
+        app.set('users', users);
+        break;
+      }
+    }
+  });
+});
 
 /**
  * Listen on provided port, on all network interfaces.
@@ -30,22 +61,6 @@ var io = socketIo(server);
 server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
-
-io.on('connection', (socket) => {
-  console.log('New client connected');
-
-  // Example: Emit an event to the connected client
-  socket.emit('messageFromServer', { message: 'Hello from Express server!' });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-});
-
-app.use((req, res, next) => {
-  req.io = io;
-  next();
-});
 
 /**
  * Normalize a port into a number, string, or false.

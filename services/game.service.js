@@ -34,22 +34,32 @@ exports.joinGame = async (gameId, username) => {
         throw new Error('Game already full.');
     }
     const game = await gameModel.findByIdAndUpdate(gameId, { p2: user.user._id }, { new: true, runValidators: true })
+        .populate("p1")
+        .populate("p2")
+
     return {
         game
     }
 }
 
 exports.updateMove = async (gameId, newMove) => {
-    const game = await gameModel.findById(gameId);
+    const game = await gameModel.findById(gameId)
+        .populate('p1', 'username')
+        .populate('p2', 'username');
+
     if (newMove.next) {
         game.p1_Moves = [];
         game.p2_Moves = [];
     } else {
         if (newMove.score) {
-            if (newMove.p1)
+            if (newMove.p1) {
                 game.score.p1 = game.score.p1 + 1
-            else
+                game.p1_Moves.push(newMove.value)
+            }
+            else {
                 game.score.p2 = game.score.p2 + 1
+                game.p2_Moves.push(newMove.value)
+            }
         } else {
             if (newMove.p1)
                 game.p1_Moves.push(newMove.value)
