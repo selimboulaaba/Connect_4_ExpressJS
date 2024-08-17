@@ -26,19 +26,17 @@ exports.joinGame = async (gameId, username) => {
     if (!existingGame) {
         throw new Error('Insert a Valid Game ID.');
     }
-    if (existingGame.p1.username === username) {
-        throw new Error('What are you doing ? -_-');
-    }
     const user = await getUser(username)
     if (existingGame.p2 && existingGame.p2 === user._id) {
         throw new Error('Game already full.');
     }
-    const game = await gameModel.findByIdAndUpdate(gameId, { p2: user.user._id }, { new: true, runValidators: true })
-        .populate("p1")
-        .populate("p2")
-
+    if (existingGame.p1.username != username) {
+        existingGame.p2 = user.user._id;
+        await existingGame.save();
+    }
+    existingGame.p2 = user.user;
     return {
-        game
+        game: existingGame
     }
 }
 
