@@ -1,23 +1,29 @@
 {
   "name": "connect-4-api",
-  "version": "0.0.0",
-  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
   "scripts": {
-    "dev": "nodemon ./bin/www",
-    "start": "node ./bin/www"
+    "start": "nodemon index.js",
+    "test": "jest"
   },
+  "license": "MIT",
   "dependencies": {
     "bcrypt": "^5.1.1",
-    "cookie-parser": "~1.4.4",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "debug": "~2.6.9",
     "dotenv": "^16.4.5",
-    "express": "~4.16.1",
-    "http-errors": "~1.6.3",
-    "jade": "~1.11.0",
+    "eslint": "^8.0.1",
+    "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
+    "lint": "^0.8.19",
     "mongoose": "^8.5.3",
-    "morgan": "~1.9.1",
+    "nodemon": "^3.1.0",
     "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-n": "^15.0.0 || ^16.0.0 ",
+    "eslint-plugin-promise": "^6.0.0"
   }
 }
