@@ -71,3 +71,17 @@ exports.updateMove = async (gameId, newMove) => {
     }
 }
 
+exports.getGamesByUsername = async (username) => {
+    const user = await getUser(username)
+    const games = await gameModel.find({
+        $or: [
+            { "p1": user._id },
+            { "p2": user._id }
+        ]
+    })
+        .populate("p1")
+        .populate("p2")
+    return {
+        games
+    }
+}
