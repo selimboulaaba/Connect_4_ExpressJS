@@ -36,7 +36,26 @@ async function getUser(req, res, next) {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1];
         const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-        res.json(await userService.getUser(decoded.username));
+        res.json(await userService.getUserByUsername(decoded.username));
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
+async function getUsersByUsername(req, res, next) {
+    try {
+        res.json(await userService.getUsersByUsername(req.params.username));
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
+async function addFriend(req, res, next) {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+        res.json(await userService.addFriend(decoded.username, req.body.friendId));
     } catch (error) {
         return res.status(400).json({ message: error.message });
     }
@@ -44,6 +63,8 @@ async function getUser(req, res, next) {
 
 module.exports = {
     createUser,
+    getUsersByUsername,
+    signIn,
     getUser,
-    signIn
+    addFriend,
 }; 

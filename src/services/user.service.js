@@ -27,13 +27,39 @@ exports.signin = async (credentials) => {
     return { user, token };
 };
 
-exports.getUser = async (username) => {
+function generateAccessToken(username) {
+    return jwt.sign({ username }, process.env.TOKEN_SECRET, { expiresIn: '2d' });
+}
+
+exports.getUserByUsername = async (username) => {
     const user = await userModel.findOne({ username })
+        .populate('friends')
     return {
         user
     }
 }
 
-function generateAccessToken(username) {
-    return jwt.sign({ username }, process.env.TOKEN_SECRET, { expiresIn: '2d' });
+exports.getUsersByUsername = async (username) => {
+    const users = await userModel.find({
+        username: {
+            $regex: username,
+            $options: 'i'
+        }
+    });
+    return {
+        users
+    }
 }
+
+exports.addFriend = async (username, friendId) => {
+    const result = await this.getUserByUsername(username);
+    const { user } = result;
+
+    user.friends.push(friendId)
+    await user.save();
+    await user.populate('friends')
+    return {
+        user
+    }
+}
+

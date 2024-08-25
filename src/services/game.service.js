@@ -1,5 +1,5 @@
 const gameModel = require('../models/game.model')
-const { getUser } = require('./user.service')
+const { getUserByUsername } = require('./user.service')
 const mongoose = require('mongoose');
 
 exports.createGame = async (newGame) => {
@@ -72,7 +72,7 @@ exports.updateMove = async (gameId, newMove) => {
 }
 
 exports.getGamesByUsername = async (username) => {
-    const user = await getUser(username)
+    const user = await getUserByUsername(username)
     const games = await gameModel.find({
         $or: [
             { "p1": user._id },

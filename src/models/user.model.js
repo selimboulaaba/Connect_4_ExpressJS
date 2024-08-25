@@ -10,6 +10,13 @@ const userSchema = new mongoose.Schema(
             type: String,
             require: true
         },
+        friends: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                default: [],
+            }
+        ]
     },
     {
         new: true,
