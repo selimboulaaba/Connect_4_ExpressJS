@@ -15,7 +15,7 @@ exports.signup = async (newUser) => {
 }
 
 exports.signin = async (credentials) => {
-    const user = await userModel.findOne({ username: credentials.username });
+    const user = await userModel.findOne({ username: credentials.username }).populate('friends');
     if (!user) {
         throw new Error('Wrong Username.');
     }
@@ -51,11 +51,13 @@ exports.getUsersByUsername = async (username) => {
     }
 }
 
-exports.addFriend = async (username, friendId) => {
-    const result = await this.getUserByUsername(username);
-    const { user } = result;
-
-    user.friends.push(friendId)
+exports.handleFriend = async (username, friendId) => {
+    const user = await userModel.findOne({ username });
+    if (user.friends.includes(friendId)) {
+        user.friends = user.friends.filter(fId => fId.toString() !== friendId)
+    } else {
+        user.friends.push(friendId)
+    }
     await user.save();
     await user.populate('friends')
     return {

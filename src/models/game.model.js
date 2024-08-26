@@ -30,6 +30,10 @@ const gameSchema = new mongoose.Schema(
                 default: 0,
             },
         },
+        p1LastMove: {
+            type: Boolean,
+            default: false,
+        }
     },
     {
         new: true,

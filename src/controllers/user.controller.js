@@ -50,12 +50,12 @@ async function getUsersByUsername(req, res, next) {
     }
 }
 
-async function addFriend(req, res, next) {
+async function handleFriend(req, res, next) {
     try {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1];
         const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-        res.json(await userService.addFriend(decoded.username, req.body.friendId));
+        res.json(await userService.handleFriend(decoded.username, req.body.friendId));
     } catch (error) {
         return res.status(400).json({ message: error.message });
     }
@@ -66,5 +66,5 @@ module.exports = {
     getUsersByUsername,
     signIn,
     getUser,
-    addFriend,
+    handleFriend,
 }; 

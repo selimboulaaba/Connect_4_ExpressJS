@@ -6,7 +6,7 @@ const middleware = require('../middlewares/auth.middleware')
 /* GET users listing. */
 router.get('/:username', middleware.authenticateToken, userController.getUsersByUsername);
 router.get('/', middleware.authenticateToken, userController.getUser);
-router.post('/addFriend', middleware.authenticateToken, userController.addFriend);
+router.post('/handleFriend', middleware.authenticateToken, userController.handleFriend);
 
 router.post('/signup', userController.createUser);
 router.post('/signin', userController.signIn);

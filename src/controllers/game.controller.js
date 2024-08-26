@@ -56,6 +56,11 @@ async function joinGame(req, res, next) {
 
 async function updateMove(req, res, next) {
     try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+
+
         const newMove = req.body;
         const result = await gameService.updateMove(req.params.id, newMove);
         const { game } = result;
@@ -64,12 +69,15 @@ async function updateMove(req, res, next) {
             const io = req.app.get('io');
             const users = req.app.get('users');
             const username = req.body.username;
+
             const socketId = users[username];
             if (socketId) {
-                io.to(socketId).emit('newMove', { newGame: game });
+                io.to(socketId).emit('newMove', { newGame: game, next: newMove.next });
+                io.to(users[decoded.username]).emit('newMove', { newGame: game, next: newMove.next });
             } else {
                 console.log(`User with username ${username} is not connected.`);
             }
+
         } catch (error) {
             console.log("Socket Error.")
         }

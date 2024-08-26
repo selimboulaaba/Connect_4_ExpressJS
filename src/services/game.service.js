@@ -26,7 +26,7 @@ exports.joinGame = async (gameId, username) => {
     if (!existingGame) {
         throw new Error('Insert a Valid Game ID.');
     }
-    const user = await getUser(username)
+    const user = await getUserByUsername(username)
     if (existingGame.p2 && existingGame.p2 === user._id) {
         throw new Error('Game already full.');
     }
@@ -48,21 +48,30 @@ exports.updateMove = async (gameId, newMove) => {
     if (newMove.next) {
         game.p1_Moves = [];
         game.p2_Moves = [];
+        if ((game.score.p1 + game.score.p2) % 2 === 0) {
+            game.p1LastMove = false
+        } else if ((game.score.p1 + game.score.p2) % 2 === 1) {
+            game.p1LastMove = true
+        }
     } else {
         if (newMove.score) {
-            if (newMove.p1) {
+            if (!game.p1LastMove) {
                 game.score.p1 = game.score.p1 + 1
                 game.p1_Moves.push(newMove.value)
-            }
-            else {
+                game.p1LastMove = true
+            } else if (game.p1LastMove) {
                 game.score.p2 = game.score.p2 + 1
                 game.p2_Moves.push(newMove.value)
+                game.p1LastMove = false
             }
         } else {
-            if (newMove.p1)
+            if (!game.p1LastMove) {
                 game.p1_Moves.push(newMove.value)
-            else
+                game.p1LastMove = true
+            } else if (game.p1LastMove) {
                 game.p2_Moves.push(newMove.value)
+                game.p1LastMove = false
+            }
         }
     }
     await game.save();
