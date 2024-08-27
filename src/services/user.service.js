@@ -80,10 +80,13 @@ exports.updateProfile = async (username, id, payload) => {
     if (!!payload.password) {
         user.password = await bcrypt.hash(payload.password, 12)
     }
+    const token = generateAccessToken(payload.username)
+
     await user.save();
     await user.populate('friends')
     return {
-        user
+        user,
+        token
     }
 }
 
