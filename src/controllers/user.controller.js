@@ -61,10 +61,22 @@ async function handleFriend(req, res, next) {
     }
 }
 
+async function updateProfile(req, res, next) {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+        res.json(await userService.updateProfile(decoded.username, req.params.id, req.body));
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
 module.exports = {
     createUser,
     getUsersByUsername,
     signIn,
     getUser,
     handleFriend,
+    updateProfile,
 }; 

@@ -65,3 +65,25 @@ exports.handleFriend = async (username, friendId) => {
     }
 }
 
+exports.updateProfile = async (username, id, payload) => {
+    const user = await userModel.findById(id);
+    if (!user) {
+        throw new Error('Wrong Username.');
+    }
+    if (user.username !== username) {
+        throw new Error('User Not Authorized.');
+    }
+    if (await userModel.findOne({ username: payload.username })) {
+        throw new Error('Username Already Exists.');
+    }
+    user.username = payload.username;
+    if (!!payload.password) {
+        user.password = await bcrypt.hash(payload.password, 12)
+    }
+    await user.save();
+    await user.populate('friends')
+    return {
+        user
+    }
+}
+
