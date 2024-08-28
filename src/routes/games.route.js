@@ -4,6 +4,7 @@ const gameController = require('../controllers/game.controller')
 const middleware = require('../middlewares/auth.middleware')
 
 router.post('/', middleware.authenticateToken, gameController.createGame);
+router.post('/invite', middleware.authenticateToken, gameController.inviteFriend);
 router.get('/:id', middleware.authenticateToken, gameController.getGame);
 router.put('/move/:id', middleware.authenticateToken, gameController.updateMove);
 router.put('/:id', middleware.authenticateToken, gameController.joinGame);

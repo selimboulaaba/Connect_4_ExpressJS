@@ -90,3 +90,10 @@ exports.updateProfile = async (username, id, payload) => {
     }
 }
 
+exports.getUserById = async (id) => {
+    const user = await userModel.findById(id)
+    return {
+        user
+    }
+}
+

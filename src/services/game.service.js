@@ -94,3 +94,11 @@ exports.getGamesByUsername = async (username) => {
         games
     }
 }
+
+exports.inviteFriend = async (newGame) => {
+    const game = await gameModel.create(newGame)
+    return {
+        game
+    }
+}
+

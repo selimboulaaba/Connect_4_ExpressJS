@@ -1,4 +1,5 @@
 const gameService = require("../services/game.service");
+const userService = require("../services/user.service");
 const jwt = require('jsonwebtoken');
 
 async function createGame(req, res, next) {
@@ -90,9 +91,38 @@ async function updateMove(req, res, next) {
     }
 }
 
+async function inviteFriend(req, res, next) {
+    try {
+        const newGame = req.body
+        const result = await gameService.inviteFriend(newGame);
+        const { game } = result;
+
+        try {
+            const io = req.app.get('io');
+            const users = req.app.get('users');
+            const user = await userService.getUserById(newGame.p2)
+            const socketId = users[user.user.username];
+            if (socketId) {
+                io.to(socketId).emit('inviteFriend', { newGame: game });
+            } else {
+                console.log(`User with username ${username} is not connected.`);
+            }
+        } catch (error) {
+            console.log("Socket Error.")
+        }
+
+        res.json({
+            game: game
+        });
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
 module.exports = {
     getGame,
     createGame,
     joinGame,
-    updateMove
+    updateMove,
+    inviteFriend
 }; 
