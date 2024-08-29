@@ -93,6 +93,10 @@ async function updateMove(req, res, next) {
 
 async function inviteFriend(req, res, next) {
     try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+
         const newGame = req.body
         const result = await gameService.inviteFriend(newGame);
         const { game } = result;
@@ -103,7 +107,7 @@ async function inviteFriend(req, res, next) {
             const user = await userService.getUserById(newGame.p2)
             const socketId = users[user.user.username];
             if (socketId) {
-                io.to(socketId).emit('inviteFriend', { newGame: game });
+                io.to(socketId).emit('inviteFriend', { newGame: game, username: decoded.username });
             } else {
                 console.log(`User with username ${username} is not connected.`);
             }

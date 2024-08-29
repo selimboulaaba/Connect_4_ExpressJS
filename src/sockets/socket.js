@@ -1,5 +1,6 @@
 var socketIo = require('socket.io');
 const gameService = require("../services/game.service");
+const userService = require("../services/user.service");
 
 module.exports = (server, app) => {
     const io = socketIo(server, {
@@ -24,6 +25,28 @@ module.exports = (server, app) => {
             }
         });
 
+        socket.on('acceptInvite', async (inviteData) => {
+            const user = await userService.getUserById(inviteData.newGame.p1)
+            const user2 = await userService.getUserById(inviteData.newGame.p2)
+            const recipientSocketId = users[user.user.username];
+            if (recipientSocketId) {
+                io.to(recipientSocketId).emit('inviteAccepted', { gameId: inviteData.newGame._id, username: user2.user.username });
+            } else {
+                console.log('User not found');
+            }
+        });
+
+        socket.on('declineInvite', async (inviteData) => {
+            const user = await userService.getUserById(inviteData.newGame.p1)
+            const user2 = await userService.getUserById(inviteData.newGame.p2)
+            const recipientSocketId = users[user.user.username];
+            if (recipientSocketId) {
+                io.to(recipientSocketId).emit('inviteDeclined', { username: user2.user.username });
+            } else {
+                console.log('User not found');
+            }
+        });
+
         socket.on('disconnect', () => {
             for (let username in users) {
                 if (users[username] === socket.id) {
@@ -42,9 +65,9 @@ module.exports = (server, app) => {
                     const user = username === games[i].p1.username ? games[i].p2?.username : games[i].p1.username;
                     const socketId = users[user];
                     if (socketId) {
-                        io.to(socketId).emit('PlayerConnected', {user, availability: true});
+                        io.to(socketId).emit('PlayerConnected', { user, availability: true });
                     } else {
-                        io.to(socketId).emit('PlayerConnected', {user, availability: false});
+                        io.to(socketId).emit('PlayerConnected', { user, availability: false });
                     }
                 }
             }
