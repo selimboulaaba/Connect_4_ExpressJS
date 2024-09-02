@@ -97,3 +97,10 @@ exports.getUserById = async (id) => {
     }
 }
 
+exports.updateExperience = async (id, payload) => {
+    const user = await userModel.findOneAndUpdate({ _id: id }, { lvl: payload.lvl, xp: payload.xp })
+    return {
+        user
+    }
+}
+

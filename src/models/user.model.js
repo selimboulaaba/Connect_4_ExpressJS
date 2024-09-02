@@ -16,7 +16,17 @@ const userSchema = new mongoose.Schema(
                 ref: 'User',
                 default: [],
             }
-        ]
+        ],
+        lvl: {
+            type: Number,
+            require: true,
+            default: 1
+        },
+        xp: {
+            type: Number,
+            require: true,
+            default: 0
+        }
     },
     {
         new: true,

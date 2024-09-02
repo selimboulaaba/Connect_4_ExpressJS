@@ -72,6 +72,14 @@ async function updateProfile(req, res, next) {
     }
 }
 
+async function updateExperience(req, res, next) {
+    try {
+        res.json(await userService.updateExperience(req.params.id, req.body));
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
 module.exports = {
     createUser,
     getUsersByUsername,
@@ -79,4 +87,5 @@ module.exports = {
     getUser,
     handleFriend,
     updateProfile,
+    updateExperience
 }; 
