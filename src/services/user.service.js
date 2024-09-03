@@ -97,10 +97,28 @@ exports.getUserById = async (id) => {
     }
 }
 
-exports.updateExperience = async (id, payload) => {
-    const user = await userModel.findOneAndUpdate({ _id: id }, { lvl: payload.lvl, xp: payload.xp })
-    return {
-        user
+exports.updateExperience = async (id, req) => {
+    const user = await userModel.findById(id)
+    user.xp += 33
+    if (user.xp >= 100 && user.xp < 250) {
+        user.lvl = 2
+    } else if (user.xp >= 250) {
+        const level = Math.floor((Math.log(user.xp / 250) / Math.log(2)) + 3);
+        user.lvl = level
     }
+
+    try {
+        const io = req.app.get('io');
+        const users = req.app.get('users');
+        const socketId = users[user.username];
+        if (socketId) {
+            io.to(socketId).emit('updateExperience', { xp: user.xp, lvl: user.lvl });
+        } else {
+            console.log(`User with username ${username} is not connected.`);
+        }
+    } catch (error) {
+        console.log("Socket Error.")
+    }
+    await user.save();
 }
 

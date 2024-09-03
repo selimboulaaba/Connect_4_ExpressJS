@@ -63,7 +63,7 @@ async function updateMove(req, res, next) {
 
 
         const newMove = req.body;
-        const result = await gameService.updateMove(req.params.id, newMove);
+        const result = await gameService.updateMove(req.params.id, newMove, req);
         const { game } = result;
 
         try {

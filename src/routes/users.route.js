@@ -7,7 +7,6 @@ const middleware = require('../middlewares/auth.middleware')
 router.get('/:username', middleware.authenticateToken, userController.getUsersByUsername);
 router.get('/', middleware.authenticateToken, userController.getUser);
 router.post('/handleFriend', middleware.authenticateToken, userController.handleFriend);
-router.put('/experience/:id', middleware.authenticateToken, userController.updateExperience)
 router.put('/:id', middleware.authenticateToken, userController.updateProfile)
 
 router.post('/signup', userController.createUser);

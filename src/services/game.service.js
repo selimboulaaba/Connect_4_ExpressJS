@@ -1,6 +1,7 @@
 const gameModel = require('../models/game.model')
-const { getUserByUsername } = require('./user.service')
+const { getUserByUsername, updateExperience } = require('./user.service')
 const mongoose = require('mongoose');
+const cron = require('node-cron');
 
 exports.createGame = async (newGame) => {
     const game = await gameModel.create(newGame)
@@ -40,7 +41,7 @@ exports.joinGame = async (gameId, username) => {
     }
 }
 
-exports.updateMove = async (gameId, newMove) => {
+exports.updateMove = async (gameId, newMove, req) => {
     const game = await gameModel.findById(gameId)
         .populate('p1', 'username')
         .populate('p2', 'username');
@@ -59,10 +60,12 @@ exports.updateMove = async (gameId, newMove) => {
                 game.score.p1 = game.score.p1 + 1
                 game.p1_Moves.push(newMove.value)
                 game.p1LastMove = true
+                updateExperience(game.p1._id, req)
             } else if (game.p1LastMove) {
                 game.score.p2 = game.score.p2 + 1
                 game.p2_Moves.push(newMove.value)
                 game.p1LastMove = false
+                updateExperience(game.p2._id, req)
             }
         } else {
             if (!game.p1LastMove) {
@@ -101,4 +104,13 @@ exports.inviteFriend = async (newGame) => {
         game
     }
 }
+
+cron.schedule('30 2 * * *', async () => {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 7);
+
+    await gameModel.deleteMany({
+        createdAt: { $lt: cutoffDate }
+    });
+});
 
