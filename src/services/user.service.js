@@ -122,3 +122,10 @@ exports.updateExperience = async (id, req) => {
     await user.save();
 }
 
+exports.getLeaderBoard = async () => {
+    const users = await userModel.find({}).sort({ xp: 'desc' })
+    return {
+        users
+    }
+}
+

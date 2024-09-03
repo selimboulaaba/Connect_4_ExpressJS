@@ -72,6 +72,15 @@ async function updateProfile(req, res, next) {
     }
 }
 
+async function getLeaderBoard(req, res, next) {
+    try {
+        res.json(await userService.getLeaderBoard());
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
+
 module.exports = {
     createUser,
     getUsersByUsername,
@@ -79,4 +88,5 @@ module.exports = {
     getUser,
     handleFriend,
     updateProfile,
+    getLeaderBoard
 }; 
