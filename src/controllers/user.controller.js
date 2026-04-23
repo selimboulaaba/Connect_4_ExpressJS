@@ -1,5 +1,6 @@
 const userService = require("../services/user.service");
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 
 async function createUser(req, res, next) {
     try {
@@ -81,6 +82,35 @@ async function getLeaderBoard(req, res, next) {
 }
 
 
+async function dismissPendingInvite(req, res) {
+    try {
+        if (!req.body?.gameId || !mongoose.isValidObjectId(req.body.gameId)) {
+            return res.status(400).json({ message: 'Invalid game id' });
+        }
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+        const { user } = await userService.getUserByUsername(decoded.username);
+        await userService.removePendingGameInvite(user._id, req.body.gameId);
+        const fresh = await userService.getUserByUsername(decoded.username);
+        res.json({ user: fresh.user });
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
+async function getOnlineStatus(req, res) {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+        const users = req.app.get('users');
+        res.json(await userService.getOnlineStatus(decoded.username, users));
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+}
+
 module.exports = {
     createUser,
     getUsersByUsername,
@@ -88,5 +118,7 @@ module.exports = {
     getUser,
     handleFriend,
     updateProfile,
-    getLeaderBoard
+    getLeaderBoard,
+    getOnlineStatus,
+    dismissPendingInvite,
 }; 

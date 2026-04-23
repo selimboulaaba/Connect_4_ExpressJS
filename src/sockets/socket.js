@@ -26,6 +26,13 @@ module.exports = (server, app) => {
         });
 
         socket.on('acceptInvite', async (inviteData) => {
+            try {
+                const inviteeId = inviteData.newGame.p2?._id || inviteData.newGame.p2
+                const gid = inviteData.newGame._id
+                await userService.removePendingGameInvite(inviteeId, gid)
+            } catch (e) {
+                console.log('acceptInvite pending cleanup', e.message)
+            }
             const user = await userService.getUserById(inviteData.newGame.p1)
             const user2 = await userService.getUserById(inviteData.newGame.p2)
             const recipientSocketId = users[user.user.username];
@@ -37,6 +44,13 @@ module.exports = (server, app) => {
         });
 
         socket.on('declineInvite', async (inviteData) => {
+            try {
+                const inviteeId = inviteData.newGame.p2?._id || inviteData.newGame.p2
+                const gid = inviteData.newGame._id
+                await userService.removePendingGameInvite(inviteeId, gid)
+            } catch (e) {
+                console.log('declineInvite pending cleanup', e.message)
+            }
             const user = await userService.getUserById(inviteData.newGame.p1)
             const user2 = await userService.getUserById(inviteData.newGame.p2)
             const recipientSocketId = users[user.user.username];
@@ -47,7 +61,36 @@ module.exports = (server, app) => {
             }
         });
 
+        socket.on('chatMessage', (data) => {
+            // data: { opponentUsername, username, message }
+            if (!data.message || data.message.length > 100) return;
+            const payload = {
+                username: data.username,
+                message: data.message,
+            };
+            const opponentSocketId = users[data.opponentUsername];
+            if (opponentSocketId) {
+                io.to(opponentSocketId).emit('chatMessage', payload);
+            }
+            if (users[data.username]) {
+                io.to(users[data.username]).emit('chatMessage', payload);
+            }
+        });
+
+        socket.on('spectateGame', (gameId) => {
+            if (typeof gameId === 'string' && gameId.length < 64) {
+                socket.join(`spectators:${gameId}`);
+            }
+        });
+
+        socket.on('stopSpectating', (gameId) => {
+            if (typeof gameId === 'string') {
+                socket.leave(`spectators:${gameId}`);
+            }
+        });
+
         socket.on('disconnect', () => {
+            clearInterval(intervalId);
             for (let username in users) {
                 if (users[username] === socket.id) {
                     delete users[username];
@@ -63,11 +106,10 @@ module.exports = (server, app) => {
                 const { games } = result;
                 for (let i = 0; i < games.length; i++) {
                     const user = username === games[i].p1.username ? games[i].p2?.username : games[i].p1.username;
-                    const socketId = users[user];
-                    if (socketId) {
-                        io.to(socketId).emit('PlayerConnected', { user, availability: true });
-                    } else {
-                        io.to(socketId).emit('PlayerConnected', { user, availability: false });
+                    const opponentSocketId = users[user];
+                    const currentSocketId = users[username];
+                    if (currentSocketId) {
+                        io.to(currentSocketId).emit('PlayerConnected', { user, availability: !!opponentSocketId });
                     }
                 }
             }

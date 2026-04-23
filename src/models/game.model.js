@@ -33,7 +33,12 @@ const gameSchema = new mongoose.Schema(
         p1LastMove: {
             type: Boolean,
             default: false,
-        }
+        },
+        tournamentId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Tournament',
+            default: null,
+        },
     },
     {
         new: true,

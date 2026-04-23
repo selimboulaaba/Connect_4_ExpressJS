@@ -26,7 +26,24 @@ const userSchema = new mongoose.Schema(
             type: Number,
             require: true,
             default: 0
-        }
+        },
+        stats: {
+            wins:   { type: Number, default: 0 },
+            losses: { type: Number, default: 0 },
+            draws:  { type: Number, default: 0 },
+        },
+        achievements: { type: [String], default: [] },
+        avatar: { type: String, default: 'avatar_1' },
+        pendingGameInvites: {
+            type: [
+                {
+                    game: { type: mongoose.Schema.Types.ObjectId, ref: 'Game' },
+                    fromUsername: { type: String, required: true },
+                    createdAt: { type: Date, default: Date.now },
+                },
+            ],
+            default: [],
+        },
     },
     {
         new: true,

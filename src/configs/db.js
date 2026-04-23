@@ -1,6 +1,9 @@
 const mongoose = require("mongoose")
 const dotenv = require("dotenv")
+const dns = require("dns")
 dotenv.config()
+
+dns.setServers(["1.1.1.1"])
 
 const db = async () =>{
     try {
