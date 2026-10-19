@@ -4,8 +4,8 @@ const GameHistory = require('../models/gameHistory.model')
 const userModel = require('../models/user.model')
 const userService = require('./user.service')
 const tournamentService = require('./tournament.service')
-const { checkAchievements, ACHIEVEMENTS } = require('../utils/achievements')
-const { buildBoard, dropRow, roundResult, pos, COLS } = require('../utils/board')
+const { roundWinAchievements, totalsAchievements } = require('../utils/achievements')
+const { buildBoard, dropRow, roundResult, findWinLine, pos, COLS } = require('../utils/board')
 const { HttpError, assertObjectId } = require('../utils/http')
 const { emitToGame, emitToUser } = require('../sockets/io')
 
@@ -78,24 +78,25 @@ function startRound (game) {
 }
 
 // Persists the side effects of a decided round: stats, XP, history, achievements, brackets.
-async function settleRound (game, winnerSeat, reason) {
+// ctx: { line, elapsedMs } describe the winning move, when there was one.
+async function settleRound (game, winnerSeat, reason, ctx = {}) {
     const p1 = game.p1._id || game.p1
     const p2 = game.p2._id || game.p2
     if (winnerSeat === 'draw') {
         await GameHistory.create({ winner: p1, loser: p2, draw: true, reason: 'draw' })
-        await userService.recordRound({ winnerId: p1, loserId: p2, draw: true })
+        const { winner: a, loser: b } = await userService.recordRound({ winnerId: p1, loserId: p2, draw: true })
+        await userService.grantAchievements(p1, ['stalemate', ...totalsAchievements(a)])
+        await userService.grantAchievements(p2, ['stalemate', ...totalsAchievements(b)])
     } else {
         const winnerId = winnerSeat === 'p1' ? p1 : p2
         const loserId = winnerSeat === 'p1' ? p2 : p1
         await GameHistory.create({ winner: winnerId, loser: loserId, reason })
         const { winner, loser } = await userService.recordRound({ winnerId, loserId })
-        if (reason === 'connect') {
-            const unlocked = checkAchievements(winner, loser, game, winnerSeat === 'p1')
-            if (unlocked.length) {
-                await userService.unlockAchievements(winnerId, unlocked)
-                emitToUser(winnerId, 'achievementsUnlocked', { achievements: unlocked.map((a) => ACHIEVEMENTS[a]) })
-            }
-        }
+        await userService.grantAchievements(winnerId, [
+            ...roundWinAchievements(winner, loser, { game, winnerSeat, reason, ...ctx }),
+            ...totalsAchievements(winner),
+        ])
+        await userService.grantAchievements(loserId, totalsAchievements(loser))
     }
     if (game.tournamentId) {
         try {
@@ -182,6 +183,7 @@ exports.playMove = (me, gameId, col) => withGameLock(gameId, async () => {
     if (row === -1) throw new HttpError(409, 'This column is full.')
 
     const move = pos(row, col)
+    const elapsedMs = game.turnStartedAt ? Date.now() - game.turnStartedAt.getTime() : null
     game[`${seat}_Moves`].push(move)
     game.p1LastMove = seat === 'p1'
     game.turnStartedAt = new Date()
@@ -189,7 +191,10 @@ exports.playMove = (me, gameId, col) => withGameLock(gameId, async () => {
     const result = roundResult(game.p1_Moves, game.p2_Moves)
     if (result) endRound(game, result, result === 'draw' ? 'draw' : 'connect')
     await game.save()
-    if (result) await settleRound(game, result, result === 'draw' ? 'draw' : 'connect')
+    if (result) {
+        const line = result === 'draw' ? null : findWinLine(buildBoard(game.p1_Moves, game.p2_Moves), result)
+        await settleRound(game, result, result === 'draw' ? 'draw' : 'connect', { line, elapsedMs })
+    }
 
     return publish(game, { type: result ? 'roundEnd' : 'move', by: me.username, move })
 })

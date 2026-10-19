@@ -54,3 +54,5 @@ exports.solveToday = async (dateStr, userId, move) => {
     if (!res.modifiedCount) throw new HttpError(409, "You've already solved today's puzzle.")
     return { correct: true, xpAwarded: p.xpReward, solution: p.solution }
 }
+
+exports.countSolvedBy = (userId) => Puzzle.countDocuments({ solvedBy: userId })

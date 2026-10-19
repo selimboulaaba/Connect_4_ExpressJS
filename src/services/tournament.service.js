@@ -2,6 +2,7 @@ const Tournament = require('../models/tournament.model')
 const gameModel = require('../models/game.model')
 const { HttpError, assertObjectId } = require('../utils/http')
 const { emitToUser } = require('../sockets/io')
+const userService = require('./user.service')
 
 // Lets every player's lobby refresh as soon as the bracket changes.
 function notifyPlayers (t) {
@@ -116,5 +117,6 @@ exports.handleGameUpdated = async (gameId) => {
         t.status = 'complete'
         await t.save()
         notifyPlayers(t)
+        await userService.grantAchievements(winnerId, ['tournament_champion'])
     }
 }

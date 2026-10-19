@@ -5,6 +5,8 @@ const { HttpError, assertObjectId } = require('../utils/http')
 const { signToken } = require('../middlewares/auth.middleware')
 const { levelForXp, XP } = require('../utils/level')
 const { emitToUser, isOnline } = require('../sockets/io')
+const { ACHIEVEMENTS, levelAchievements } = require('../utils/achievements')
+const { isValidAvatar } = require('../utils/avatar')
 
 // Cost 10 keeps sign-in fast on small instances; existing cost-12 hashes still verify.
 const BCRYPT_ROUNDS = 10
@@ -93,6 +95,7 @@ exports.toggleFriend = async (meId, friendId) => {
     const me = await userModel.findById(meId)
     const isFriend = me.friends.some((f) => String(f) === String(friendId))
     await userModel.updateOne({ _id: meId }, isFriend ? { $pull: { friends: friendId } } : { $addToSet: { friends: friendId } })
+    if (!isFriend && me.friends.length + 1 >= 5) await exports.grantAchievements(meId, ['social'])
     return exports.getMe(meId)
 }
 
@@ -112,7 +115,7 @@ exports.updateProfile = async (meId, targetId, payload = {}) => {
         user.password = await bcrypt.hash(payload.password, BCRYPT_ROUNDS)
     }
     if (payload.avatar !== undefined) {
-        if (!/^avatar_(?:[1-9]|1[0-2])$/.test(payload.avatar)) throw new HttpError(400, 'Unknown avatar.')
+        if (!isValidAvatar(payload.avatar)) throw new HttpError(400, 'Unknown avatar.')
         user.avatar = payload.avatar
     }
     await user.save()
@@ -137,30 +140,43 @@ exports.addXP = async (userId, amount) => {
         await userModel.updateOne({ _id: userId }, { lvl })
     }
     pushProfile(user)
+    await exports.grantAchievements(userId, levelAchievements(lvl), user)
     return user
 }
 
 // Updates stats + XP for a finished round and pushes the new numbers to both players.
 exports.recordRound = async ({ winnerId, loserId, draw }) => {
     if (draw) {
-        await userModel.updateMany({ _id: { $in: [winnerId, loserId] } }, { $inc: { 'stats.draws': 1 } })
+        await userModel.updateMany({ _id: { $in: [winnerId, loserId] } }, { $inc: { 'stats.draws': 1 }, $set: { 'stats.streak': 0 } })
         const [a, b] = await Promise.all([exports.addXP(winnerId, XP.DRAW), exports.addXP(loserId, XP.DRAW)])
         return { winner: a, loser: b }
     }
     await Promise.all([
-        userModel.updateOne({ _id: winnerId }, { $inc: { 'stats.wins': 1 } }),
-        userModel.updateOne({ _id: loserId }, { $inc: { 'stats.losses': 1 } }),
+        userModel.updateOne({ _id: winnerId }, { $inc: { 'stats.wins': 1, 'stats.streak': 1 } }),
+        userModel.updateOne({ _id: loserId }, { $inc: { 'stats.losses': 1 }, $set: { 'stats.streak': 0 } }),
     ])
+    // Keep the best streak in step with the current one.
+    await userModel.updateOne({ _id: winnerId }, [{ $set: { 'stats.bestStreak': { $max: [{ $ifNull: ['$stats.bestStreak', 0] }, '$stats.streak'] } } }])
     const winner = await exports.addXP(winnerId, XP.WIN)
     const loser = await userModel.findById(loserId)
     pushProfile(loser)
     return { winner, loser }
 }
 
-exports.unlockAchievements = async (userId, ids) => {
-    if (!ids.length) return
-    const user = await userModel.findByIdAndUpdate(userId, { $addToSet: { achievements: { $each: ids } } }, { new: true })
+/**
+ * Awards achievements and tells the player about the ones that are new.
+ * Pass `known` (a user doc) to skip a lookup when the caller already has it.
+ */
+exports.grantAchievements = async (userId, ids, known = null) => {
+    const wanted = [...new Set(ids)].filter((id) => ACHIEVEMENTS[id])
+    if (!wanted.length) return []
+    const current = known || (await userModel.findById(userId).select('achievements').lean())
+    const fresh = wanted.filter((id) => !(current?.achievements || []).includes(id))
+    if (!fresh.length) return []
+    const user = await userModel.findByIdAndUpdate(userId, { $addToSet: { achievements: { $each: fresh } } }, { new: true })
     pushProfile(user)
+    emitToUser(userId, 'achievementsUnlocked', { achievements: fresh.map((id) => ACHIEVEMENTS[id]) })
+    return fresh
 }
 
 exports.getLeaderBoard = () =>

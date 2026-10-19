@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const { randomAvatar } = require('../utils/avatar')
 
 const userSchema = new mongoose.Schema(
     {
@@ -33,9 +34,12 @@ const userSchema = new mongoose.Schema(
             wins:   { type: Number, default: 0 },
             losses: { type: Number, default: 0 },
             draws:  { type: Number, default: 0 },
+            streak: { type: Number, default: 0 },
+            bestStreak: { type: Number, default: 0 },
         },
         achievements: { type: [String], default: [] },
-        avatar: { type: String, default: 'avatar_1' },
+        // DiceBear "style:seed"; legacy accounts may still hold "avatar_N".
+        avatar: { type: String, default: randomAvatar },
         pendingGameInvites: {
             type: [
                 {

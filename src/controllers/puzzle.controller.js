@@ -11,7 +11,11 @@ const getToday = asyncHandler(async (req, res) => {
 
 const solveToday = asyncHandler(async (req, res) => {
     const result = await puzzleService.solveToday(todayStr(), req.user.id, req.body?.move)
-    if (result.correct) await userService.addXP(req.user.id, result.xpAwarded)
+    if (result.correct) {
+        await userService.addXP(req.user.id, result.xpAwarded)
+        const solved = await puzzleService.countSolvedBy(req.user.id)
+        await userService.grantAchievements(req.user.id, [solved >= 1 && 'puzzler', solved >= 7 && 'puzzle_master'].filter(Boolean))
+    }
     res.json(result)
 })
 
