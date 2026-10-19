@@ -1,15 +1,19 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express')
+const router = express.Router()
 const gameController = require('../controllers/game.controller')
-const middleware = require('../middlewares/auth.middleware')
+const { authenticateToken } = require('../middlewares/auth.middleware')
 
-router.post('/', middleware.authenticateToken, gameController.createGame);
-router.post('/invite', middleware.authenticateToken, gameController.inviteFriend);
-router.get('/history', middleware.authenticateToken, gameController.getHistory);
-router.get('/active', middleware.authenticateToken, gameController.listActiveGames);
-router.get('/:id', middleware.authenticateToken, gameController.getGame);
-router.put('/move/:id', middleware.authenticateToken, gameController.updateMove);
-router.put('/:id', middleware.authenticateToken, gameController.joinGame);
-router.post('/rematch/:id', middleware.authenticateToken, gameController.requestRematch);
+router.use(authenticateToken)
 
-module.exports = router;
+router.post('/', gameController.createGame)
+router.post('/invite', gameController.inviteFriend)
+router.get('/history', gameController.getHistory)
+router.get('/active', gameController.listActiveGames)
+router.get('/:id', gameController.getGame)
+router.put('/:id', gameController.joinGame)
+router.put('/:id/move', gameController.playMove)
+router.post('/:id/forfeit', gameController.forfeitRound)
+router.post('/:id/rematch', gameController.requestRematch)
+router.post('/:id/decline', gameController.declineInvite)
+
+module.exports = router

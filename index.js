@@ -1,30 +1,43 @@
-const express = require("express")
+require('dotenv').config()
+
+const express = require('express')
 const cors = require('cors')
-const db = require("./src/configs/db")
-const cookieParser = require("cookie-parser")
-const socketSetup = require('./src/sockets/socket');
+const db = require('./src/configs/db')
+const { allowedOrigins } = require('./src/configs/cors')
+const socketSetup = require('./src/sockets/socket')
+const scheduleCleanup = require('./src/jobs/cleanup')
+const { errorHandler } = require('./src/utils/http')
 
-const dotenv = require('dotenv')
-dotenv.config()
+if (!process.env.TOKEN_SECRET) {
+    console.error('TOKEN_SECRET is not set. Add it to your environment variables.')
+    process.exit(1)
+}
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000
 const app = express()
-app.use(express.json())
-app.use(cors({ origin: process.env.FRONT_URL, credentials: true }))
+
+// Render (and most hosts) sit behind a proxy; needed for correct client IPs in rate limiting.
+app.set('trust proxy', 1)
+app.disable('x-powered-by')
+app.use(express.json({ limit: '20kb' }))
+app.use(cors({ origin: allowedOrigins, credentials: true }))
+
+// Lightweight endpoint for uptime pingers: no database access.
+app.get('/health', (req, res) => res.json({ ok: true, uptime: Math.round(process.uptime()) }))
+
+app.use('/users', require('./src/routes/users.route'))
+app.use('/games', require('./src/routes/games.route'))
+app.use('/puzzles', require('./src/routes/puzzles.route'))
+app.use('/tournaments', require('./src/routes/tournaments.route'))
+
+app.use((req, res) => res.status(404).json({ message: 'Not found.' }))
+app.use(errorHandler)
 
 db()
-
-const usersRouter = require('./src/routes/users.route')
-const gameRouter = require('./src/routes/games.route')
-const puzzlesRouter = require('./src/routes/puzzles.route')
-const tournamentsRouter = require('./src/routes/tournaments.route')
-
-app.use(cookieParser());
-app.use('/users', usersRouter)
-app.use('/games', gameRouter)
-app.use('/puzzles', puzzlesRouter)
-app.use('/tournaments', tournamentsRouter)
+scheduleCleanup()
 
 const server = app.listen(PORT, () => console.log(`Server is running on port ${PORT}`))
+socketSetup(server)
 
-socketSetup(server, app);
+// Log instead of crashing the process on a stray promise.
+process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', err))

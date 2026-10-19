@@ -1,41 +1,52 @@
 const Tournament = require('../models/tournament.model')
 const gameModel = require('../models/game.model')
+const { HttpError, assertObjectId } = require('../utils/http')
+const { emitToUser } = require('../sockets/io')
+
+// Lets every player's lobby refresh as soon as the bracket changes.
+function notifyPlayers (t) {
+    for (const p of t.players) emitToUser(p._id || p, 'tournamentUpdate', { tournamentId: String(t._id) })
+}
 
 exports.createTournament = async (hostId, name) => {
     const t = await Tournament.create({
         host: hostId,
         players: [hostId],
-        name: name || 'Bracket',
+        name: (typeof name === 'string' && name.trim().slice(0, 40)) || 'Bracket',
     })
     return t
 }
 
 exports.getTournament = async (id) => {
+    assertObjectId(id, 'Invalid tournament ID.')
     return Tournament.findById(id)
         .populate('host', 'username avatar')
         .populate('players', 'username avatar')
-        .populate('semiGameIds')
-        .populate('finalGameId')
+        .populate({ path: 'semiGameIds', select: 'p1 p2 score', populate: { path: 'p1 p2', select: 'username avatar' } })
+        .populate({ path: 'finalGameId', select: 'p1 p2 score', populate: { path: 'p1 p2', select: 'username avatar' } })
         .populate('championId', 'username avatar')
 }
 
 exports.joinTournament = async (tournamentId, userId) => {
+    assertObjectId(tournamentId, 'Invalid tournament ID.')
     const t = await Tournament.findById(tournamentId)
-    if (!t) throw new Error('Tournament not found.')
-    if (t.status !== 'waiting') throw new Error('Tournament already started.')
-    if (t.players.length >= t.maxPlayers) throw new Error('Tournament is full.')
-    if (t.players.some((p) => p.toString() === userId.toString())) throw new Error('Already joined.')
+    if (!t) throw new HttpError(400, 'Tournament not found.')
+    if (t.status !== 'waiting') throw new HttpError(400, 'Tournament already started.')
+    if (t.players.length >= t.maxPlayers) throw new HttpError(400, 'Tournament is full.')
+    if (t.players.some((p) => p.toString() === userId.toString())) throw new HttpError(400, 'Already joined.')
     t.players.push(userId)
     await t.save()
+    notifyPlayers(t)
     return exports.getTournament(t._id)
 }
 
 exports.startTournament = async (tournamentId, hostId) => {
+    assertObjectId(tournamentId, 'Invalid tournament ID.')
     const t = await Tournament.findById(tournamentId)
-    if (!t) throw new Error('Tournament not found.')
-    if (t.host.toString() !== hostId.toString()) throw new Error('Only the host can start.')
-    if (t.players.length !== 4) throw new Error('Need exactly 4 players to start.')
-    if (t.status !== 'waiting') throw new Error('Already started.')
+    if (!t) throw new HttpError(400, 'Tournament not found.')
+    if (t.host.toString() !== hostId.toString()) throw new HttpError(400, 'Only the host can start.')
+    if (t.players.length !== 4) throw new HttpError(400, 'Need exactly 4 players to start.')
+    if (t.status !== 'waiting') throw new HttpError(400, 'Already started.')
 
     const shuffled = [...t.players].sort(() => Math.random() - 0.5)
     const g1 = await gameModel.create({
@@ -53,6 +64,7 @@ exports.startTournament = async (tournamentId, hostId) => {
     t.semiWinners = [null, null]
     t.status = 'semifinals'
     await t.save()
+    notifyPlayers(t)
     return exports.getTournament(t._id)
 }
 
@@ -60,7 +72,7 @@ exports.startTournament = async (tournamentId, hostId) => {
  * Call after a game is saved. First-to-2 (round wins) wins the bracket match.
  */
 exports.handleGameUpdated = async (gameId) => {
-    const game = await gameModel.findById(gameId).populate('p1').populate('p2')
+    const game = await gameModel.findById(gameId)
     if (!game || !game.tournamentId) return
 
     const t = await Tournament.findById(game.tournamentId)
@@ -70,7 +82,7 @@ exports.handleGameUpdated = async (gameId) => {
     const p2Score = game.score.p2
     if (p1Score < 2 && p2Score < 2) return
 
-    const winnerId = p1Score >= 2 ? game.p1._id : game.p2._id
+    const winnerId = p1Score >= 2 ? game.p1 : game.p2
 
     if (t.status === 'semifinals') {
         const idx = t.semiGameIds.findIndex((id) => id.equals(game._id))
@@ -94,6 +106,7 @@ exports.handleGameUpdated = async (gameId) => {
             t.status = 'final'
         }
         await t.save()
+        notifyPlayers(t)
         return
     }
 
@@ -102,5 +115,6 @@ exports.handleGameUpdated = async (gameId) => {
         t.championId = winnerId
         t.status = 'complete'
         await t.save()
+        notifyPlayers(t)
     }
 }

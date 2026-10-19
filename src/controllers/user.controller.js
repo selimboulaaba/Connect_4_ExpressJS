@@ -1,115 +1,43 @@
-const userService = require("../services/user.service");
-const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
+const userService = require('../services/user.service')
+const { asyncHandler, assertObjectId } = require('../utils/http')
 
-async function createUser(req, res, next) {
-    try {
-        const newUser = req.body;
-        const result = await userService.signup(newUser);
+const createUser = asyncHandler(async (req, res) => {
+    res.status(201).json(await userService.signup(req.body))
+})
 
-        const { user } = result;
-        res.status(201).json({
-            message: `User with username ${user.username} signed up successfully`,
-        });
-    } catch (error) {
-        return res.status(400).json({ message: error.message });
-    }
-}
+const signIn = asyncHandler(async (req, res) => {
+    res.json(await userService.signin(req.body))
+})
 
-async function signIn(req, res) {
-    try {
-        const User = req.body;
-        const result = await userService.signin(User);
+const getUser = asyncHandler(async (req, res) => {
+    res.json({ user: await userService.getMe(req.user.id) })
+})
 
-        const { user, token } = result;
-        res.status(201).json({
-            user: user,
-            token: token,
-            message: `User with username ${user.username} signed in successfully`,
-        });
-    } catch (error) {
-        return res.status(400).json({ message: error.message });
-    }
-}
+const getUsersByUsername = asyncHandler(async (req, res) => {
+    res.json({ users: await userService.searchUsers(req.params.username, req.user.id) })
+})
 
-async function getUser(req, res, next) {
-    try {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-        res.json(await userService.getUserByUsername(decoded.username));
-    } catch (error) {
-        return res.status(400).json({ message: error.message });
-    }
-}
+const handleFriend = asyncHandler(async (req, res) => {
+    res.json({ user: await userService.toggleFriend(req.user.id, req.body?.friendId) })
+})
 
-async function getUsersByUsername(req, res, next) {
-    try {
-        res.json(await userService.getUsersByUsername(req.params.username));
-    } catch (error) {
-        return res.status(400).json({ message: error.message });
-    }
-}
+const updateProfile = asyncHandler(async (req, res) => {
+    res.json(await userService.updateProfile(req.user.id, req.params.id, req.body))
+})
 
-async function handleFriend(req, res, next) {
-    try {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-        res.json(await userService.handleFriend(decoded.username, req.body.friendId));
-    } catch (error) {
-        return res.status(400).json({ message: error.message });
-    }
-}
+const getLeaderBoard = asyncHandler(async (req, res) => {
+    res.json({ users: await userService.getLeaderBoard() })
+})
 
-async function updateProfile(req, res, next) {
-    try {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-        res.json(await userService.updateProfile(decoded.username, req.params.id, req.body));
-    } catch (error) {
-        return res.status(400).json({ message: error.message });
-    }
-}
+const dismissPendingInvite = asyncHandler(async (req, res) => {
+    assertObjectId(req.body?.gameId, 'Invalid game ID.')
+    await userService.removePendingGameInvite(req.user.id, req.body.gameId)
+    res.json({ user: await userService.getMe(req.user.id) })
+})
 
-async function getLeaderBoard(req, res, next) {
-    try {
-        res.json(await userService.getLeaderBoard());
-    } catch (error) {
-        return res.status(400).json({ message: error.message });
-    }
-}
-
-
-async function dismissPendingInvite(req, res) {
-    try {
-        if (!req.body?.gameId || !mongoose.isValidObjectId(req.body.gameId)) {
-            return res.status(400).json({ message: 'Invalid game id' });
-        }
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-        const { user } = await userService.getUserByUsername(decoded.username);
-        await userService.removePendingGameInvite(user._id, req.body.gameId);
-        const fresh = await userService.getUserByUsername(decoded.username);
-        res.json({ user: fresh.user });
-    } catch (error) {
-        return res.status(400).json({ message: error.message });
-    }
-}
-
-async function getOnlineStatus(req, res) {
-    try {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-        const users = req.app.get('users');
-        res.json(await userService.getOnlineStatus(decoded.username, users));
-    } catch (error) {
-        return res.status(400).json({ message: error.message });
-    }
-}
+const getOnlineStatus = asyncHandler(async (req, res) => {
+    res.json({ onlineFriends: await userService.getOnlineStatus(req.user.id) })
+})
 
 module.exports = {
     createUser,
@@ -121,4 +49,4 @@ module.exports = {
     getLeaderBoard,
     getOnlineStatus,
     dismissPendingInvite,
-}; 
+}

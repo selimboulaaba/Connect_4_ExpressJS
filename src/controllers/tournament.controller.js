@@ -1,54 +1,23 @@
-const jwt = require('jsonwebtoken')
 const tournamentService = require('../services/tournament.service')
-const userService = require('../services/user.service')
+const { asyncHandler, HttpError } = require('../utils/http')
 
-async function create(req, res) {
-    try {
-        const authHeader = req.headers['authorization']
-        const token = authHeader && authHeader.split(' ')[1]
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET)
-        const user = await userService.getUserByUsername(decoded.username)
-        const t = await tournamentService.createTournament(user.user._id, req.body.name)
-        res.status(201).json({ tournament: t })
-    } catch (error) {
-        return res.status(400).json({ message: error.message })
-    }
-}
+const create = asyncHandler(async (req, res) => {
+    const t = await tournamentService.createTournament(req.user.id, req.body?.name)
+    res.status(201).json({ tournament: await tournamentService.getTournament(t._id) })
+})
 
-async function getOne(req, res) {
-    try {
-        const t = await tournamentService.getTournament(req.params.id)
-        if (!t) return res.status(404).json({ message: 'Not found' })
-        res.json({ tournament: t })
-    } catch (error) {
-        return res.status(400).json({ message: error.message })
-    }
-}
+const getOne = asyncHandler(async (req, res) => {
+    const t = await tournamentService.getTournament(req.params.id)
+    if (!t) throw new HttpError(404, 'Tournament not found.')
+    res.json({ tournament: t })
+})
 
-async function join(req, res) {
-    try {
-        const authHeader = req.headers['authorization']
-        const token = authHeader && authHeader.split(' ')[1]
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET)
-        const user = await userService.getUserByUsername(decoded.username)
-        const t = await tournamentService.joinTournament(req.params.id, user.user._id)
-        res.json({ tournament: t })
-    } catch (error) {
-        return res.status(400).json({ message: error.message })
-    }
-}
+const join = asyncHandler(async (req, res) => {
+    res.json({ tournament: await tournamentService.joinTournament(req.params.id, req.user.id) })
+})
 
-async function start(req, res) {
-    try {
-        const authHeader = req.headers['authorization']
-        const token = authHeader && authHeader.split(' ')[1]
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET)
-        const user = await userService.getUserByUsername(decoded.username)
-        const t = await tournamentService.startTournament(req.params.id, user.user._id)
-        res.json({ tournament: t })
-    } catch (error) {
-        return res.status(400).json({ message: error.message })
-    }
-}
+const start = asyncHandler(async (req, res) => {
+    res.json({ tournament: await tournamentService.startTournament(req.params.id, req.user.id) })
+})
 
 module.exports = { create, getOne, join, start }

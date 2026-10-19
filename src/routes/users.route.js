@@ -1,19 +1,21 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express')
+const router = express.Router()
 const userController = require('../controllers/user.controller')
-const middleware = require('../middlewares/auth.middleware')
+const { authenticateToken } = require('../middlewares/auth.middleware')
+const { rateLimit } = require('../middlewares/rateLimit.middleware')
 
-/* GET users listing. */
-router.get('/leaderboard', middleware.authenticateToken, userController.getLeaderBoard);
-router.get('/online-status', middleware.authenticateToken, userController.getOnlineStatus);
-router.post('/pending-invites/dismiss', middleware.authenticateToken, userController.dismissPendingInvite);
-router.get('/', middleware.authenticateToken, userController.getUser);
+// Slows down password guessing without bothering normal players.
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 })
 
-router.post('/handleFriend', middleware.authenticateToken, userController.handleFriend);
-router.post('/signup', userController.createUser);
-router.post('/signin', userController.signIn);
+router.post('/signup', authLimiter, userController.createUser)
+router.post('/signin', authLimiter, userController.signIn)
 
-router.get('/:username', middleware.authenticateToken, userController.getUsersByUsername);
-router.put('/:id', middleware.authenticateToken, userController.updateProfile);
+router.get('/', authenticateToken, userController.getUser)
+router.get('/leaderboard', authenticateToken, userController.getLeaderBoard)
+router.get('/online-status', authenticateToken, userController.getOnlineStatus)
+router.post('/pending-invites/dismiss', authenticateToken, userController.dismissPendingInvite)
+router.post('/handleFriend', authenticateToken, userController.handleFriend)
+router.get('/search/:username', authenticateToken, userController.getUsersByUsername)
+router.put('/:id', authenticateToken, userController.updateProfile)
 
-module.exports = router;
+module.exports = router

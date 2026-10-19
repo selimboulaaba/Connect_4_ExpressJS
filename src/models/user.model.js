@@ -4,28 +4,30 @@ const userSchema = new mongoose.Schema(
     {
         username: {
             type: String,
-            require: true
+            required: true,
+            trim: true,
+            index: true,
         },
         password: {
             type: String,
-            require: true
+            required: true,
+            select: false,
         },
         friends: [
             {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: 'User',
-                default: [],
+                index: true,
             }
         ],
         lvl: {
             type: Number,
-            require: true,
             default: 1
         },
         xp: {
             type: Number,
-            require: true,
-            default: 0
+            default: 0,
+            index: true,
         },
         stats: {
             wins:   { type: Number, default: 0 },
@@ -46,9 +48,18 @@ const userSchema = new mongoose.Schema(
         },
     },
     {
-        new: true,
-        timestamps: true
+        timestamps: true,
+        toJSON: {
+            transform (doc, ret) {
+                delete ret.password
+                delete ret.__v
+                return ret
+            },
+        },
     }
 )
+
+// Fields that are safe to show about other players.
+userSchema.statics.PUBLIC_FIELDS = 'username avatar lvl xp stats'
 
 module.exports = mongoose.model('User', userSchema)
